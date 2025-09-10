@@ -238,8 +238,8 @@ const boxContent = (content, contentWidth, options) => {
 
 	result += lines.map(line => marginLeft + colorizeBorder(chars.left) + colorizeContent(line) + colorizeBorder(chars.right)).join(NEWLINE);
 
-	if (options.borderStyle !== NONE) {
-		result += NEWLINE + colorizeBorder(marginLeft + chars.bottomLeft + chars.bottom.repeat(contentWidth) + chars.bottomRight);
+	if (options.borderStyle !== NONE || options.subtitle) {
+		result += NEWLINE + colorizeBorder(marginLeft + chars.bottomLeft + (options.subtitle ? makeTitle(options.subtitle, chars.bottom.repeat(contentWidth), options.subtitleAlignment) : chars.bottom.repeat(contentWidth)) + chars.bottomRight);
 	}
 
 	if (options.margin.bottom) {
@@ -281,21 +281,34 @@ const determineDimensions = (text, options) => {
 	const borderWidth = getBorderWidth(options.borderStyle);
 	const maxWidth = columns - options.margin.left - options.margin.right - borderWidth;
 
-	const widest = widestLine(wrapAnsi(text, columns - borderWidth, {hard: true, trim: false})) + options.padding.left + options.padding.right;
+	let widest = widestLine(wrapAnsi(text, columns - borderWidth, {hard: true, trim: false})) + options.padding.left + options.padding.right;
 
-	// If title and width are provided, title adheres to fixed width
-	if (options.title && widthOverride) {
-		options.title = options.title.slice(0, Math.max(0, options.width - 2));
+	// If either title or subtitle are provided along with width, title and subtitle adhere to fixed width
+	if ((options.title || options.subtitle) && widthOverride) {
+		options.title &&= options.title.slice(0, Math.max(0, options.width - 2));
 		options.title &&= formatTitle(options.title, options.borderStyle);
-	} else if (options.title) {
-		options.title = options.title.slice(0, Math.max(0, maxWidth - 2));
-
-		// Recheck if title isn't empty now
+		options.subtitle &&= options.subtitle.slice(0, Math.max(0, options.width - 2));
+		options.subtitle &&= formatTitle(options.subtitle, options.borderStyle);
+	} else {
 		if (options.title) {
-			options.title = formatTitle(options.title, options.borderStyle);
-			// If the title is larger than content, box adheres to title width
-			if (stringWidth(options.title) > widest) {
-				options.width = stringWidth(options.title);
+			options.title = options.title.slice(0, Math.max(0, maxWidth - 2));
+
+			// Recheck if title isn't empty now
+			if (options.title) {
+				options.title = formatTitle(options.title, options.borderStyle);
+				// If the title is larger than content, box adheres to title width
+				widest = Math.max(widest, stringWidth(options.title));
+			}
+		}
+
+		if (options.subtitle) {
+			options.subtitle = options.subtitle.slice(0, Math.max(0, maxWidth - 2));
+
+			// Recheck if subtitle isn't empty now
+			if (options.subtitle) {
+				options.subtitle = formatTitle(options.subtitle, options.borderStyle);
+				// If the subtitle is larger than content, box adheres to subtitle width
+				widest = Math.max(widest, stringWidth(options.subtitle));
 			}
 		}
 	}
@@ -347,6 +360,7 @@ export default function boxen(text, options) {
 		textAlignment: 'left',
 		float: 'left',
 		titleAlignment: 'left',
+		subtitleAlignment: 'left',
 		...options,
 	};
 
